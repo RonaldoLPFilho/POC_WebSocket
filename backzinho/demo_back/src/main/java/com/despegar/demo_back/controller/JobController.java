@@ -19,6 +19,9 @@ public class JobController {
     @MessageMapping("/get-jobs")
     @SendTo("/topic/jobs")
     public List<JobData> getJobs() {
-        return jobService.getJobs();
+        System.out.println("Recebida solicitação de jobs");
+        List<JobData> jobs = jobService.getJobs();
+        System.out.println("Retornando " + jobs.size() + " jobs");
+        return jobs;
     }
 }

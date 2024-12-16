@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client'; 
 
 function App() {
   const [jobs, setJobs] = useState([]);
@@ -10,7 +11,7 @@ function App() {
     console.log('Iniciando conexão WebSocket...');
     
     const client = new Client({
-      brokerURL: 'ws://localhost:8080/ws',  
+      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),  // Mudança aqui
       debug: function (str) {
         console.log('STOMP: ' + str);
       },
@@ -19,18 +20,16 @@ function App() {
         setStatus('Conectado');
         setError(null);
         
-
         client.subscribe('/topic/jobs', (message) => {
           console.log('Mensagem recebida:', message.body);
           const receivedJobs = JSON.parse(message.body);
           setJobs(receivedJobs);
         });
 
-
         console.log('Solicitando estado inicial...');
         client.publish({
           destination: '/app/get-jobs',
-          body: JSON.stringify({ request: 'initialState' })  
+          body: JSON.stringify({ request: 'initialState' })
         });
       },
       onDisconnect: () => {
@@ -47,18 +46,13 @@ function App() {
         setStatus('Erro WebSocket');
         setError('Não foi possível conectar ao servidor');
       },
-      reconnectDelay: 5000, 
-      heartbeatIncoming: 4000, 
-      heartbeatOutgoing: 4000, 
-      onWebSocketClose: (event) => {
-        console.warn('WebSocket fechado. Tentando reconectar...');
-        setStatus('Tentando reconectar...');
-        client.activate();
-      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000
     });
 
     try {
-      client.activate(); 
+      client.activate();
     } catch (err) {
       console.error('Erro ao ativar cliente:', err);
       setError(err.message);
@@ -66,7 +60,9 @@ function App() {
 
     return () => {
       console.log('Desativando conexão...');
-      client.deactivate();
+      if (client.active) {
+        client.deactivate();
+      }
     };
   }, []);
 
@@ -75,7 +71,6 @@ function App() {
       <h1>Monitoramento de Jobs</h1>
       <p>Status: {status}</p>
       {error && <p style={{color: 'red'}}>Erro: {error}</p>}
-      
       <div>
         <h2>Jobs:</h2>
         {jobs.length === 0 ? (

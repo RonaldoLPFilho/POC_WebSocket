@@ -28,43 +28,45 @@ public class JobService {
 
     private void initializeJobs() {
         jobs = Arrays.asList(
-            JobData.builder()
-                .id(1)
-                .title("tiruylo um")
-                .status(Status.PROCESSING)
-                .build(),
-            JobData.builder()
-                    .id(2)
-                    .title("tiruylo dois")
-                    .status(Status.FAILED)
-                    .build()
+                JobData.builder()
+                        .id(1)
+                        .title("tiruylo um")
+                        .status(Status.PROCESSING)
+                        .build(),
+                JobData.builder()
+                        .id(2)
+                        .title("tiruylo dois")
+                        .status(Status.FAILED)
+                        .build()
         );
-
     }
 
-    @Scheduled(fixedRate = 5000)
-    public void updateJobStatus(){
-        jobs = jobs.stream().map(this::simulate).collect(Collectors.toList());
+    @Scheduled(fixedRate = 2000)
+    public void updateJobStatus() {
+        jobs = jobs.stream()
+                .map(this::updateRandomStatus)
+                .collect(Collectors.toList());
+
+
+        messagingTemplate.convertAndSend("/topic/jobs", jobs);
+        log.info("Jobs atualizados: {}", jobs); 
     }
 
-    private JobData simulate(JobData jobData) {
-        if (!Status.OK.equals(jobData.getStatus())) {
-            Random random = new Random();
-            int randomNumber = random.nextInt(3);
+    private JobData updateRandomStatus(JobData jobData) {
+        Random random = new Random();
+        int randomNumber = random.nextInt(3);
 
-            Status newStatus = switch (randomNumber) {
-                case 0 -> Status.OK;
-                case 1 -> Status.FAILED;
-                default -> Status.PROCESSING;
-            };
+        Status newStatus = switch (randomNumber) {
+            case 0 -> Status.OK;
+            case 1 -> Status.FAILED;
+            default -> Status.PROCESSING;
+        };
 
-            return JobData.builder()
-                    .id(jobData.getId())
-                    .title(jobData.getTitle())
-                    .status(newStatus)
-                    .build();
-        }
-        return jobData;
+        return JobData.builder()
+                .id(jobData.getId())
+                .title(jobData.getTitle())
+                .status(newStatus)
+                .build();
     }
 
     public List<JobData> getJobs() {
